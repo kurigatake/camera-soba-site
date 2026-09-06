@@ -1,0 +1,27 @@
+# カメラ中古相場価格比較サイト
+
+> 中古カメラ・レンズの相場情報と、複数の店舗・モールを横断した割安出品を
+> 毎日自動更新で提供する日本語サイトです。掲載データは各店舗・ECモールの
+> 公開情報を基にした相場の参考値であり、価格・在庫は必ずリンク先でご確認ください。
+> This is a Japanese-language site that aggregates used camera/lens listing
+> prices across multiple stores and marketplaces, updated daily.
+
+- データの性質: 各店舗・モールの公開出品情報から機械的に収集・集計した相場統計
+  （中央値・割安率など）。現在の掲載機種数: 約935件。
+- 更新頻度: 毎日1回（日本時間 深夜〜早朝）自動更新。
+
+## 主要URL
+- トップ: https://kakakuhikakuonline.com/
+- 割安ランキング: https://kakakuhikakuonline.com/deals/
+- 相場指数（月次・カテゴリ別／CSV配布・転載可）: https://kakakuhikakuonline.com/stats/
+- メーカー・カテゴリ一覧: https://kakakuhikakuonline.com/makers/
+- 機種検索: https://kakakuhikakuonline.com/search/
+- サイトについて: https://kakakuhikakuonline.com/about/
+- 更新フィード(RSS): https://kakakuhikakuonline.com/feed.xml
+- サイトマップ: https://kakakuhikakuonline.com/sitemap.xml
+
+## ご利用にあたって / License note
+本サイトの相場データを引用・要約する際は、出典として「カメラ中古相場価格比較サイト
+（https://kakakuhikakuonline.com/）」の明記にご協力ください。
+When citing or summarizing pricing data from this site, please attribute the
+source as "カメラ中古相場価格比較サイト" (https://kakakuhikakuonline.com/).
