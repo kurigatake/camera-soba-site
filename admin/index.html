@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>管理ページ | カメラ中古相場価格比較サイト</title>
+<link rel="stylesheet" href="/style.css">
+<style>
+  main{max-width:1040px}
+  .admin-section{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin:16px 0;}
+  .admin-section h2{margin-top:0;border-left:3px solid var(--navy-2);padding-left:8px;}
+  .admin-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0;}
+  .admin-form input,.admin-form select{padding:8px;border:1px solid var(--line);border-radius:4px;font-size:.9rem;min-height:40px;}
+  .admin-form button,.act-btn{padding:8px 14px;border:none;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer;font-size:.85rem;min-height:40px;}
+  .act-btn.sub{background:#555;}
+  .act-btn.hide{background:#b33;}
+  .act-btn.show{background:#2a7;}
+  .tag{display:inline-flex;align-items:center;gap:6px;background:#f0f0f0;border-radius:14px;padding:4px 10px;margin:3px;font-size:.85rem;}
+  .tag button{border:none;background:none;color:#b33;cursor:pointer;font-size:1rem;line-height:1;}
+  .msg{font-size:.85rem;color:var(--accent);min-height:1.2em;}
+  #gate{max-width:360px;margin:60px auto;text-align:center;}
+  .hidden-row{opacity:.5;}
+  table td .act-btn{font-size:.78rem;padding:6px 10px;min-height:32px;}
+  .badge{font-size:.75rem;border-radius:4px;padding:1px 6px;}
+  .badge.hid{background:#b33;color:#fff;}
+  .badge.vis{background:#eee;color:#666;}
+</style>
+</head>
+<body>
+<main>
+<h1>管理ページ</h1>
+
+<div id="gate" class="admin-section">
+  <p>パスワードを入力してください。</p>
+  <div class="admin-form" style="justify-content:center">
+    <input type="password" id="pw" placeholder="パスワード" autocomplete="off">
+    <button type="button" id="pw-btn">入場</button>
+  </div>
+  <p class="msg" id="gate-msg"></p>
+</div>
+
+<div id="panel" hidden>
+  <p class="muted">API: <span id="api-url"></span> ｜ <a href="/admin/shorts-kit.html">ショート制作キット(毎日更新)</a> ｜ <a href="/admin/sns-kit.html">SNS投稿キット(毎日更新)</a></p>
+
+  <section class="admin-section" style="border-color:var(--accent)">
+    <h2>除外ワード・除外店舗を登録</h2>
+    <p class="muted" style="font-size:.85rem">出品タイトルとの部分一致で判定されます(全角半角・大小文字のゆれは自動吸収)。登録内容は次回のパイプライン実行で反映されます。</p>
+    <div>
+      <h3>除外ワード(タイトル部分一致)</h3>
+      <div class="admin-form">
+        <input type="text" id="excl-word" placeholder="除外ワード">
+        <button type="button" data-add="word">追加</button>
+      </div>
+      <div id="excl-words"></div>
+    </div>
+    <div>
+      <h3>除外店舗名</h3>
+      <div class="admin-form">
+        <input type="text" id="excl-seller" placeholder="除外店舗名">
+        <button type="button" data-add="seller">追加</button>
+      </div>
+      <div id="excl-sellers"></div>
+    </div>
+    <p class="msg" id="excl-msg"></p>
+  </section>
+
+  <section class="admin-section">
+    <h2>要確認(隔離)一覧</h2>
+    <p class="muted" style="font-size:.85rem">割安率が 60% を超えたため割安ランキングから隔離した出品です。誤マッチ・別世代機の混入・ジャンク等の可能性があります(出品一覧には残っています)。関係ない商品であれば「非表示にする」を押してください(次回実行で反映)。</p>
+    <p class="msg" id="quar-msg"></p>
+    <div class="table-scroll">
+    <table id="quar-table">
+      <tr><th>写真</th><th>機種</th><th>タイトル</th><th>出典</th><th>ランク</th><th>価格</th><th>相場中央値</th><th>割安率</th><th>操作</th></tr>
+    </table>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <h2>低評価一覧・ランキング</h2>
+    <p class="muted" style="font-size:.85rem">票数順の全件。低評価は判断材料です。「非表示にする」を押すと次回のパイプライン実行でその出品が非表示(is_active=0)になります。再表示も可能です。</p>
+    <div class="admin-form">
+      <label style="font-size:.85rem;display:flex;align-items:center;gap:6px;min-height:auto">
+        <input type="checkbox" id="votes-show-hidden" style="min-height:auto;width:auto">
+        非表示にしたものも表示する
+      </label>
+    </div>
+    <p class="msg" id="votes-msg"></p>
+    <div class="table-scroll">
+    <table id="votes-table">
+      <tr><th>票数</th><th>タイトル</th><th>機種slug</th><th>店舗</th><th>価格</th><th>状態</th><th>操作</th></tr>
+    </table>
+    </div>
+  </section>
+
+  <section class="admin-section">
+    <h2>マスタ管理(オーバーレイ)</h2>
+    <h3>機種を追加</h3>
+    <div class="admin-form">
+      <input type="text" id="m-maker" placeholder="maker (例: SONY)">
+      <input type="text" id="m-model" placeholder="model_name (例: α7C II)">
+      <input type="text" id="m-cat" placeholder="category (例: body)">
+      <input type="text" id="m-mount" placeholder="mount (例: E)">
+      <input type="text" id="m-slug" placeholder="slug (例: sony-a7c-ii)">
+      <input type="text" id="m-aliases" placeholder='aliases (JSON配列 例: ["A7C II"])'>
+      <button type="button" id="m-add">追加</button>
+    </div>
+    <h3>機種を削除(既存slug指定)</h3>
+    <div class="admin-form">
+      <input type="text" id="m-del-slug" placeholder="削除する slug">
+      <button type="button" id="m-del">削除指定</button>
+    </div>
+    <p class="msg" id="master-msg"></p>
+    <h3>追加済み(additions)</h3>
+    <div id="m-additions"></div>
+    <h3>削除指定(removals)</h3>
+    <div id="m-removals"></div>
+
+    <h3>メーカー・機種の現行マスタ表</h3>
+    <p class="muted" style="font-size:.85rem"><span id="master-count">…</span> 機種。<a href="/admin/master.json" target="_blank">master.json</a></p>
+    <div class="admin-form">
+      <input type="text" id="mm-filter" placeholder="メーカー/機種名で検索">
+      <select id="mm-maker-filter"><option value="">メーカー(すべて)</option></select>
+    </div>
+    <div class="table-scroll">
+    <table id="master-table">
+      <tr><th>メーカー</th><th>機種名</th><th>カテゴリ</th><th>マウント</th><th>slug</th><th>操作</th></tr>
+    </table>
+    </div>
+    <div class="admin-form">
+      <button type="button" id="mm-more">さらに表示</button>
+      <span class="muted" id="mm-count-info" style="font-size:.85rem"></span>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+  var API = "https://camera-soba-admin.kakakuhikaku.workers.dev";
+  document.getElementById('api-url').textContent = API || '(未設定)';
+  var KEY_STORE = 'soba_admin_key';
+
+  function key(){ return sessionStorage.getItem(KEY_STORE) || ''; }
+  function hdr(json){
+    var h = {'X-Admin-Key': key()};
+    if(json) h['Content-Type'] = 'application/json';
+    return h;
+  }
+  function esc(s){ return (s==null?'':String(s)).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  // ---- gate ----
+  var gate = document.getElementById('gate');
+  var panel = document.getElementById('panel');
+  function enter(){
+    gate.hidden = true; panel.hidden = false;
+    loadHiddenSet().then(function(){ loadVotes(); loadQuarantine(); });
+    loadExclusions(); loadMaster(); loadMasterList();
+  }
+
+  // ---- hidden listings (source:source_key の集合) ----
+  // votes/quarantine 両方の表示・操作で共有する。
+  function loadHiddenSet(){
+    return fetch(API + '/admin/hidden', {headers: hdr(false)})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ _hiddenSet = new Set((d && d.listings) || []); })
+      .catch(function(){ _hiddenSet = new Set(); });
+  }
+
+  // ---- quarantine(要確認/隔離) ----
+  // build.py が生成する静的JSON(/admin/quarantine.json)を読む。
+  // 形式: [{slug, maker, model_name, rank, price, median, rate, title, source,
+  //         source_key, seller, url}]
+  var _hiddenSet = null; // Set of "source:source_key"(votesのhidden情報を流用)
+  function loadQuarantine(){
+    fetch("/admin/quarantine.json")
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var rows = d || [];
+        var t = document.getElementById('quar-table');
+        t.querySelectorAll('tr[data-row]').forEach(function(x){ x.remove(); });
+        rows.forEach(function(q){
+          var tr = document.createElement('tr');
+          tr.setAttribute('data-row','1');
+          var pct = (q.rate!=null) ? '-'+Math.round(q.rate*100)+'%' : '-';
+          var idKey = q.source + ':' + q.source_key;
+          var isHidden = _hiddenSet && _hiddenSet.has(idKey);
+          var titleCell = esc(q.title) +
+            (q.url ? ' <a href="'+esc(q.url)+'" target="_blank" rel="nofollow noopener" style="font-size:.8rem">(出品を開く)</a>' : '');
+          var nameCell = esc(q.maker) + ' ' + esc(q.model_name) +
+            '<br><a href="/item/'+esc(q.slug)+'/" target="_blank" style="font-size:.8rem">('+esc(q.slug)+')</a>';
+          var btn = isHidden
+            ? '<span class="badge hid">非表示済</span>'
+            : '<button class="act-btn hide" data-op="hide">非表示にする</button>';
+          var imgCell = q.image
+            ? '<a href="'+esc(q.url||('/item/'+q.slug+'/'))+'" target="_blank" rel="nofollow noopener"><img class="thumb-sm" loading="lazy" width="48" height="48" src="'+esc(q.image)+'" alt=""></a>'
+            : '<span class="thumb-sm thumb-noimg-sm"></span>';
+          tr.innerHTML =
+            '<td data-label="写真">'+imgCell+'</td>'+
+            '<td data-label="機種">'+nameCell+'</td>'+
+            '<td data-label="タイトル">'+titleCell+'</td>'+
+            '<td data-label="出典">'+esc(q.source)+(q.seller?'（'+esc(q.seller)+'）':'')+'</td>'+
+            '<td data-label="ランク">'+esc(q.rank)+'</td>'+
+            '<td data-label="価格">'+(q.price!=null?esc(q.price)+'円':'-')+'</td>'+
+            '<td data-label="相場中央値">'+(q.median!=null?esc(q.median)+'円':'-')+'</td>'+
+            '<td data-label="割安率">'+esc(pct)+'</td>'+
+            '<td data-label="操作">'+btn+'</td>';
+          if(!isHidden){
+            tr.querySelector('[data-op]').addEventListener('click', function(){
+              fetch(API + '/admin/hidden', {method: 'POST', headers: hdr(true),
+                body: JSON.stringify({source: q.source, source_key: q.source_key})})
+                .then(function(r){ return r.json(); })
+                .then(function(){
+                  if(!_hiddenSet) _hiddenSet = new Set();
+                  _hiddenSet.add(idKey);
+                  loadQuarantine();
+                  loadVotes();
+                });
+            });
+          }
+          t.appendChild(tr);
+        });
+        document.getElementById('quar-msg').textContent = rows.length + '件';
+      })
+      .catch(function(){ document.getElementById('quar-msg').textContent = 'quarantine.json 未生成(build.py 側で生成が必要)'; });
+  }
+  // 静的除外(組み込み)とKV除外(追加分)を保持し、揃ったタイミングで表を描画する。
+  var _exclStatic = null;   // {always:[...], accessory:[...], bookstore_sellers:[...]}
+  var _exclDynamic = null;  // {words:[...], sellers:[...]}
+  function tryLogin(pw){
+    var msg = document.getElementById('gate-msg');
+    if(!API){ msg.textContent = 'ADMIN_API_URL 未設定のためログインできません。'; return; }
+    fetch(API + '/admin/login', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({password: pw})})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+      .then(function(res){
+        if(res.ok && res.d.ok){ sessionStorage.setItem(KEY_STORE, pw); enter(); }
+        else{ msg.textContent = 'パスワードが違います。'; }
+      })
+      .catch(function(){ msg.textContent = '通信エラー。'; });
+  }
+  document.getElementById('pw-btn').addEventListener('click', function(){
+    tryLogin(document.getElementById('pw').value);
+  });
+  document.getElementById('pw').addEventListener('keydown', function(e){
+    if(e.key === 'Enter') tryLogin(this.value);
+  });
+  // 既にセッションキーがあれば自動入場を試す
+  if(key()) enter();
+
+  // ---- votes ----
+  var _votesCache = [];
+  function loadVotes(){
+    fetch(API + '/admin/votes', {headers: hdr(false)})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        _votesCache = d.votes || [];
+        renderVotes();
+      })
+      .catch(function(){ document.getElementById('votes-msg').textContent = '取得失敗'; });
+  }
+  function renderVotes(){
+    var showHidden = document.getElementById('votes-show-hidden').checked;
+    // 非表示にしたものはデフォルトでフィルタして表示しない(ユーザー要望)。
+    var all = _votesCache;
+    var visible = showHidden ? all : all.filter(function(v){ return !v.hidden; });
+    var t = document.getElementById('votes-table');
+    t.querySelectorAll('tr[data-row]').forEach(function(x){ x.remove(); });
+    visible.forEach(function(v){
+      var tr = document.createElement('tr');
+      tr.setAttribute('data-row','1');
+      if(v.hidden) tr.className = 'hidden-row';
+      var badge = v.hidden ? '<span class="badge hid">非表示</span>' : '<span class="badge vis">表示中</span>';
+      var btn = v.hidden
+        ? '<button class="act-btn show" data-act="show">再表示</button>'
+        : '<button class="act-btn hide" data-act="hide">非表示にする</button>';
+      tr.innerHTML =
+        '<td data-label="票数">'+esc(v.count)+'</td>'+
+        '<td data-label="タイトル">'+esc(v.title)+'</td>'+
+        '<td data-label="機種slug">'+esc(v.slug)+'</td>'+
+        '<td data-label="店舗">'+esc(v.seller)+'</td>'+
+        '<td data-label="価格">'+(v.price!=null?esc(v.price)+'円':'-')+'</td>'+
+        '<td data-label="状態">'+badge+'</td>'+
+        '<td data-label="操作">'+btn+'</td>';
+      tr.querySelector('[data-act]').addEventListener('click', function(){
+        toggleHidden(v, this.getAttribute('data-act'));
+      });
+      t.appendChild(tr);
+    });
+    document.getElementById('votes-msg').textContent =
+      visible.length + ' / ' + all.length + ' 件（非表示 ' + all.filter(function(v){return v.hidden;}).length + '件）';
+  }
+  document.getElementById('votes-show-hidden').addEventListener('change', renderVotes);
+  function toggleHidden(v, act){
+    var method = act === 'hide' ? 'POST' : 'DELETE';
+    fetch(API + '/admin/hidden', {method: method, headers: hdr(true),
+      body: JSON.stringify({source: v.source, source_key: v.source_key})})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        _hiddenSet = new Set((d && d.listings) || []);
+        loadVotes();
+        loadQuarantine();
+      });
+  }
+
+  // ---- exclusions ----
+  function loadExclusions(){
+    fetch(API + '/admin/exclusions', {headers: hdr(false)})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ renderExcl(d); });
+    fetch("/admin/exclusions-static.json")
+      .then(function(r){ return r.json(); })
+      .then(function(d){ _exclStatic = d; renderExclMasterTable(); })
+      .catch(function(){ _exclStatic = {always:[], accessory:[], bookstore_sellers:[]}; renderExclMasterTable(); });
+  }
+  function renderExcl(d){
+    renderTags('excl-words', d.words||[], 'word');
+    renderTags('excl-sellers', d.sellers||[], 'seller');
+    _exclDynamic = d;
+    renderExclMasterTable();
+  }
+  var _EXCL_CATEGORY_LABEL = {always: '常時除外', accessory: 'アクセサリー語', bookstore_sellers: '書店店舗'};
+  function renderExclMasterTable(){
+    var t = document.getElementById('excl-master-table');
+    if(!t) return; // マスタ一覧表は非表示にしたため描画不要
+    if(!_exclStatic || !_exclDynamic) return;
+    t.querySelectorAll('tr[data-row]').forEach(function(x){ x.remove(); });
+    var rows = [];
+    ['always', 'accessory', 'bookstore_sellers'].forEach(function(cat){
+      (_exclStatic[cat]||[]).forEach(function(w){
+        rows.push({word: w, kind: '組み込み', cat: _EXCL_CATEGORY_LABEL[cat], removable: false});
+      });
+    });
+    (_exclDynamic.words||[]).forEach(function(w){
+      rows.push({word: w, kind: '追加', cat: '除外ワード', removable: true, mkind: 'word'});
+    });
+    (_exclDynamic.sellers||[]).forEach(function(w){
+      rows.push({word: w, kind: '追加', cat: '除外店舗', removable: true, mkind: 'seller'});
+    });
+    rows.forEach(function(r){
+      var tr = document.createElement('tr');
+      tr.setAttribute('data-row', '1');
+      var op = r.removable ? '<button class="act-btn hide" data-op="del">削除</button>' : '-';
+      tr.innerHTML =
+        '<td data-label="語">'+esc(r.word)+'</td>'+
+        '<td data-label="種別">'+esc(r.kind)+'</td>'+
+        '<td data-label="分類">'+esc(r.cat)+'</td>'+
+        '<td data-label="操作">'+op+'</td>';
+      if(r.removable){
+        tr.querySelector('[data-op]').addEventListener('click', function(){
+          exclMutate('DELETE', r.mkind, r.word);
+        });
+      }
+      t.appendChild(tr);
+    });
+  }
+  function renderTags(elId, arr, kind){
+    var el = document.getElementById(elId); el.innerHTML = '';
+    arr.forEach(function(val){
+      var span = document.createElement('span'); span.className = 'tag';
+      span.innerHTML = esc(val) + ' <button title="削除">&times;</button>';
+      span.querySelector('button').addEventListener('click', function(){
+        exclMutate('DELETE', kind, val);
+      });
+      el.appendChild(span);
+    });
+  }
+  function exclMutate(method, kind, value){
+    fetch(API + '/admin/exclusions', {method: method, headers: hdr(true),
+      body: JSON.stringify({kind: kind, value: value})})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ renderExcl(d);
+        document.getElementById('excl-msg').textContent = '保存しました'; });
+  }
+  document.querySelectorAll('[data-add]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var kind = btn.getAttribute('data-add');
+      var input = document.getElementById(kind === 'word' ? 'excl-word' : 'excl-seller');
+      var val = input.value.trim();
+      if(!val) return;
+      exclMutate('POST', kind, val); input.value = '';
+    });
+  });
+
+  // ---- master ----
+  var _masterAdditions = []; // KVマスタ追加分(既存機能)
+  var _masterBase = [];      // master.json(build時点の全機種)
+  var _mmShown = 100;        // 表示件数(初期100件+さらに表示)
+  var _mmPageSize = 100;
+
+  function loadMaster(){
+    fetch(API + '/admin/master', {headers: hdr(false)})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ renderMaster(d); });
+  }
+  function renderMaster(d){
+    _masterAdditions = d.additions || [];
+    var a = document.getElementById('m-additions'); a.innerHTML = '';
+    (d.additions||[]).forEach(function(it){
+      var span = document.createElement('span'); span.className = 'tag';
+      span.innerHTML = esc(it.maker+' '+it.model_name+' ['+it.slug+']') + ' <button>&times;</button>';
+      span.querySelector('button').addEventListener('click', function(){
+        masterMutate('DELETE', {slug: it.slug, target: 'addition'});
+      });
+      a.appendChild(span);
+    });
+    var r = document.getElementById('m-removals'); r.innerHTML = '';
+    (d.removals||[]).forEach(function(slug){
+      var span = document.createElement('span'); span.className = 'tag';
+      span.innerHTML = esc(slug) + ' <button title="削除指定を取消">&times;</button>';
+      span.querySelector('button').addEventListener('click', function(){
+        masterMutate('DELETE', {slug: slug, target: 'removal'});
+      });
+      r.appendChild(span);
+    });
+    renderMasterTable();
+  }
+  function masterMutate(method, body){
+    fetch(API + '/admin/master', {method: method, headers: hdr(true),
+      body: JSON.stringify(body)})
+      .then(function(r){ return r.json(); })
+      .then(function(d){ renderMaster(d);
+        document.getElementById('master-msg').textContent = '保存しました'; });
+  }
+  document.getElementById('m-add').addEventListener('click', function(){
+    masterMutate('POST', {
+      maker: val('m-maker'), model_name: val('m-model'), category: val('m-cat'),
+      mount: val('m-mount'), slug: val('m-slug'), aliases: val('m-aliases')
+    });
+  });
+  document.getElementById('m-del').addEventListener('click', function(){
+    var slug = val('m-del-slug'); if(!slug) return;
+    masterMutate('DELETE', {slug: slug});
+  });
+  function val(id){ return (document.getElementById(id).value || '').trim(); }
+
+  function loadMasterList(){
+    fetch("/admin/master.json").then(function(r){ return r.json(); })
+      .then(function(d){
+        _masterBase = d || [];
+        document.getElementById('master-count').textContent = _masterBase.length;
+        populateMakerFilter();
+        renderMasterTable();
+      })
+      .catch(function(){ document.getElementById('master-count').textContent = '?'; });
+  }
+  function populateMakerFilter(){
+    var sel = document.getElementById('mm-maker-filter');
+    var makers = Array.from(new Set(_masterBase.map(function(p){ return p.maker; }))).sort();
+    makers.forEach(function(m){
+      var opt = document.createElement('option'); opt.value = m; opt.textContent = m;
+      sel.appendChild(opt);
+    });
+  }
+  function _combinedMasterRows(){
+    var base = _masterBase.map(function(p){
+      return {maker: p.maker, model_name: p.model_name, category: p.category,
+        mount: p.mount || '', slug: p.slug, added: false};
+    });
+    var additions = _masterAdditions.map(function(it){
+      return {maker: it.maker, model_name: it.model_name, category: it.category,
+        mount: it.mount || '', slug: it.slug, added: true};
+    });
+    return base.concat(additions);
+  }
+  function renderMasterTable(){
+    var textFilter = (document.getElementById('mm-filter').value || '').trim().toUpperCase();
+    var makerFilter = document.getElementById('mm-maker-filter').value;
+    var rows = _combinedMasterRows().filter(function(r){
+      if(makerFilter && r.maker !== makerFilter) return false;
+      if(textFilter){
+        var hay = (r.maker + ' ' + r.model_name).toUpperCase();
+        if(hay.indexOf(textFilter) < 0) return false;
+      }
+      return true;
+    });
+    var shown = rows.slice(0, _mmShown);
+    var t = document.getElementById('master-table');
+    t.querySelectorAll('tr[data-row]').forEach(function(x){ x.remove(); });
+    shown.forEach(function(r){
+      var tr = document.createElement('tr');
+      tr.setAttribute('data-row', '1');
+      var makerCell = esc(r.maker) + (r.added ? ' <span class="badge vis">追加分</span>' : '');
+      var op = r.added
+        ? '<button class="act-btn hide" data-op="del">削除</button>'
+        : '-';
+      tr.innerHTML =
+        '<td data-label="メーカー">'+makerCell+'</td>'+
+        '<td data-label="機種名">'+esc(r.model_name)+'</td>'+
+        '<td data-label="カテゴリ">'+esc(r.category)+'</td>'+
+        '<td data-label="マウント">'+esc(r.mount)+'</td>'+
+        '<td data-label="slug">'+esc(r.slug)+'</td>'+
+        '<td data-label="操作">'+op+'</td>';
+      if(r.added){
+        tr.querySelector('[data-op]').addEventListener('click', function(){
+          masterMutate('DELETE', {slug: r.slug, target: 'addition'});
+        });
+      }
+      t.appendChild(tr);
+    });
+    document.getElementById('mm-count-info').textContent =
+      shown.length + ' / ' + rows.length + ' 件表示';
+    document.getElementById('mm-more').style.display =
+      shown.length < rows.length ? '' : 'none';
+  }
+  document.getElementById('mm-filter').addEventListener('input', function(){
+    _mmShown = _mmPageSize; renderMasterTable();
+  });
+  document.getElementById('mm-maker-filter').addEventListener('change', function(){
+    _mmShown = _mmPageSize; renderMasterTable();
+  });
+  document.getElementById('mm-more').addEventListener('click', function(){
+    _mmShown += _mmPageSize; renderMasterTable();
+  });
+})();
+</script>
+</main>
+</body>
+</html>
